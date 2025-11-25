@@ -1,0 +1,46 @@
+# .azuredevops/azure-pipelines.yml
+
+trigger:
+- master  # Ветка, при изменении которой будет запускаться сборка
+
+pool:
+  vmImage: 'windows-latest'  # Используем Windows агент для ASP.NET
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+# Шаг 1: Установка нужной версии NuGet
+- task: NuGetToolInstaller@1
+  displayName: 'Install NuGet'
+
+# Шаг 2: Восстановление NuGet пакетов
+- task: NuGetCommand@2
+  displayName: 'NuGet restore'
+  inputs:
+    restoreSolution: '$(solution)'
+
+# Шаг 3: Сборка решения
+- task: VSBuild@1
+  displayName: 'Build solution'
+  inputs:
+    solution: '$(solution)'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
+
+# Шаг 4: Запуск тестов
+- task: VSTest@2
+  displayName: 'Run tests'
+  inputs:
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+# Шаг 5: Публикация артефактов сборки
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish artifacts'
+  inputs:
+    pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'drop'
