@@ -1,46 +1,46 @@
-# .azuredevops/azure-pipelines.yml
-
 trigger:
-- master  # Ветка, при изменении которой будет запускаться сборка
+- master
 
 pool:
-  vmImage: 'windows-latest'  # Используем Windows агент для ASP.NET
+  vmImage: 'ubuntu-latest'
 
 variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
 steps:
-# Шаг 1: Установка нужной версии NuGet
-- task: NuGetToolInstaller@1
-  displayName: 'Install NuGet'
-
-# Шаг 2: Восстановление NuGet пакетов
-- task: NuGetCommand@2
-  displayName: 'NuGet restore'
+- task: UseDotNet@2
+  displayName: 'Install .NET Core SDK'
   inputs:
-    restoreSolution: '$(solution)'
+    packageType: 'sdk'
+    version: '6.x'
 
-# Шаг 3: Сборка решения
-- task: VSBuild@1
-  displayName: 'Build solution'
+- script: |
+    echo "Checking .NET version"
+    dotnet --version
+    echo "Listing files"
+    ls -la
+  displayName: 'Check environment'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restore packages'
   inputs:
-    solution: '$(solution)'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
-    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactStagingDirectory)"'
+    command: 'restore'
+    projects: '**/*.csproj'
 
-# Шаг 4: Запуск тестов
-- task: VSTest@2
-  displayName: 'Run tests'
+- task: DotNetCoreCLI@2
+  displayName: 'Build project'
   inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+    command: 'build'
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --no-restore'
 
-# Шаг 5: Публикация артефактов сборки
+- task: DotNetCoreCLI@2
+  displayName: 'Publish application'
+  inputs:
+    command: 'publish'
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) --no-build'
+    publishWebProjects: true
+
 - task: PublishBuildArtifacts@1
   displayName: 'Publish artifacts'
-  inputs:
-    pathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    artifactName: 'drop'
