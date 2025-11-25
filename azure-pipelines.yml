@@ -1,46 +1,28 @@
 trigger:
-- master
+- main
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'self-hosted-windows'  # Используем само-хостед пул
 
 variables:
   buildConfiguration: 'Release'
 
 steps:
-- task: UseDotNet@2
-  displayName: 'Install .NET Core SDK'
-  inputs:
-    packageType: 'sdk'
-    version: '6.x'
+- powershell: |
+    Write-Host "Демонстрационный пайплайн для лабораторной работы"
+    Write-Host "Текущая директория: $(Build.SourcesDirectory)"
+    Get-ChildItem -Path . -Recurse | Select-Object Name, Length | Format-Table
+  displayName: 'Показать структуру проекта'
 
-- script: |
-    echo "Checking .NET version"
-    dotnet --version
-    echo "Listing files"
-    ls -la
-  displayName: 'Check environment'
-
-- task: DotNetCoreCLI@2
-  displayName: 'Restore packages'
+- task: CopyFiles@2
+  displayName: 'Копирование файлов'
   inputs:
-    command: 'restore'
-    projects: '**/*.csproj'
-
-- task: DotNetCoreCLI@2
-  displayName: 'Build project'
-  inputs:
-    command: 'build'
-    projects: '**/*.csproj'
-    arguments: '--configuration $(buildConfiguration) --no-restore'
-
-- task: DotNetCoreCLI@2
-  displayName: 'Publish application'
-  inputs:
-    command: 'publish'
-    projects: '**/*.csproj'
-    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) --no-build'
-    publishWebProjects: true
+    SourceFolder: '$(Build.SourcesDirectory)'
+    Contents: '**/*'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
 - task: PublishBuildArtifacts@1
-  displayName: 'Publish artifacts'
+  displayName: 'Публикация артефактов'
+  inputs:
+    pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'drop'
